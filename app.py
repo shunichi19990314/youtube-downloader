@@ -1,10 +1,14 @@
 import os
+import imageio_ffmpeg
 from flask import Flask, render_template_string, request, send_file
 from yt_dlp import YoutubeDL
 
 app = Flask(__name__)
+
+# Renderの無料環境でも安全に書き込みができる一時フォルダ
 DOWNLOAD_DIR = "/tmp"
 
+# WEB画面のHTMLテンプレート（デザイン付き）
 HTML_TEMPLATE = """
 <!DOCTYPE html>
 <html lang="ja">
@@ -47,22 +51,29 @@ def download():
     if not video_url:
         return "URLが空です", 400
 
+    # yt-dlpのオプション（720p指定、一時フォルダへ保存）
     ydl_opts = {
         'format': 'bestvideo[height=720][ext=mp4]+bestaudio[ext=m4a]/best[height=720]',
         'merge_output_format': 'mp4',
         'outtmpl': os.path.join(DOWNLOAD_DIR, '%(title)s.%(ext)s'),
-        'prefer_ffmpeg': True,
+        # 💡 ここが最重要ポイント：Pythonライブラリ経由でFFmpegの場所を確実に伝えます
+        'ffmpeg_location': imageio_ffmpeg.get_ffmpeg_exe(),
     }
 
     try:
         with YoutubeDL(ydl_opts) as ydl:
+            # 動画を処理・ダウンロード
             info = ydl.extract_info(video_url, download=True)
             filename = ydl.prepare_filename(info)
-            filepath = os.path.splitext(filename)[0] + ".mp4"
+            # 結合後の正しい拡張子（.mp4）に補正
+            filepath = os.path.splitext(filename) + ".mp4"
 
+        # サーバー上の動画ファイルをユーザーのブラウザへ送信（ダウンロード）
         return send_file(filepath, as_attachment=True)
+        
     except Exception as e:
         return f"エラーが発生しました: {str(e)}", 500
 
 if __name__ == '__main__':
+    # Renderが指定するポート番号を自動で取得して起動
     app.run(host='0.0.0.0', port=int(os.environ.get('PORT', 5000)))
