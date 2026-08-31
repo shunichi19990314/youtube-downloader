@@ -4,13 +4,11 @@ services:
     env: python
     plan: free
     region: oregon
-    # 💡 コマンドを書き換え、ビルド時にFFmpegを自動ダウンロードして配置します
     buildCommand: |
       pip install -r requirements.txt
       mkdir -p $HOME/bin
       curl -L https://github.com | tar -xJ --strip-components=2 -C $HOME/bin --wildcards '*/bin/ffmpeg' '*/bin/ffprobe'
     startCommand: gunicorn app:app
-    # 💡 設置したFFmpegをシステムが認識できるようにパスを通します
     envVars:
       - key: PATH
         value: /opt/render/project/src/bin:/usr/local/bin:/usr/bin:/bin
